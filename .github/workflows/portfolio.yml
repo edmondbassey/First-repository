@@ -1,0 +1,44 @@
+name: Portfolio checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/**"
+      - ".github/workflows/portfolio.yml"
+  pull_request:
+    paths:
+      - "projects/**"
+      - ".github/workflows/portfolio.yml"
+permissions:
+  contents: read
+jobs:
+  relay:
+    name: Relay — types, SQL tests and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/relay
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: projects/relay/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+  logbook:
+    name: Logbook — parser tests and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/logbook
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - run: npm test
+      - run: npm run build

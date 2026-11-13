@@ -1,0 +1,14 @@
+{
+  "name": "logbook-explorer",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "author": "Edmond Bassey",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.js"
+  }
+}
