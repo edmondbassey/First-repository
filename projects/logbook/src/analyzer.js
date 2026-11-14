@@ -37,8 +37,11 @@ export function parseLogs(text) {
       const rawLevel = String(
         data.level ?? data.severity ?? "unknown",
       ).toLowerCase();
-      const level =
-        aliases[rawLevel] ?? (LEVELS.includes(rawLevel) ? rawLevel : "unknown");
+      const level = Object.hasOwn(aliases, rawLevel)
+        ? aliases[rawLevel]
+        : LEVELS.includes(rawLevel)
+          ? rawLevel
+          : "unknown";
       const duration = data.duration_ms ?? data.durationMs ?? data.latency_ms;
       const status = data.status ?? data.status_code;
       const time = data.timestamp ?? data.time ?? data.ts;

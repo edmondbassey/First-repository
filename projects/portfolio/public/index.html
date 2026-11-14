@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Edmond Bassey — backend engineering, investigation tools and software with a clear trail. Explore Relay and Logbook, with source code and implementation notes."
+    />
+    <title>Edmond Bassey — Selected work</title>
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to selected work</a>
+    <header class="site-header">
+      <a class="monogram" href="./" aria-label="Edmond Bassey home"
+        >e<span>b</span><i>.</i></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#work">Selected work</a><a href="#approach">How I think</a
+        ><a href="#about">About</a>
+      </nav>
+      <a class="header-contact" href="mailto:Edmondbassey02@gmail.com"
+        >Let’s talk<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 18L18 6M6 6h12v12" /></svg
+      ></a>
+    </header>
+    <main id="main">
+      <section class="hero">
+        <div class="hero-main">
+          <div class="availability">
+            <span></span>BACKEND ENGINEERING & TROUBLESHOOTING
+          </div>
+          <h1>Edmond<br /><em>Bassey.</em></h1>
+          <p class="hero-intro">
+            I’m a backend engineer.<br />I build APIs and tools for tracking
+            down failures.
+          </p>
+          <div class="hero-actions">
+            <a href="#work" class="button dark"
+              >Explore the work<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M6 13l6 6 6-6" /></svg></a
+            ><a
+              href="https://github.com/edmondbassey"
+              target="_blank"
+              rel="noreferrer"
+              class="text-link"
+              >GitHub<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 18L18 6M6 6h12v12" /></svg
+            ></a>
+          </div>
+        </div>
+        <div class="hero-note">
+          <div class="note-index mono">A SMALL DETAIL THAT MATTERS / 01</div>
+          <div class="version-paper">
+            <div class="paper-heading">
+              <span class="mono">RELAY / WRITE PATH</span
+              ><span class="paper-dot"></span>
+            </div>
+            <div class="version-row">
+              <span class="mono">EXPECTED VERSION</span><strong>12</strong>
+            </div>
+            <div class="version-line">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v16M6 14l6 6 6-6" /></svg
+              ><span class="mono">MATCH BEFORE WRITE</span>
+            </div>
+            <div class="version-row after">
+              <span class="mono">SAVED VERSION</span><strong>13</strong>
+            </div>
+            <div class="paper-foot">
+              <span class="checkmark">✓</span
+              ><span>Update + history. One transaction.</span>
+            </div>
+          </div>
+          <p>
+            The important part is what happens<br />when two people save at
+            once.
+          </p>
+          <a
+            class="note-link"
+            href="https://github.com/edmondbassey/First-repository/blob/main/projects/relay/docs/engineering-notes.md"
+            target="_blank"
+            rel="noreferrer"
+            >Read the decision<svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" /></svg
+          ></a>
+        </div>
+      </section>
+      <div class="hero-bottom mono">
+        <span>BASED IN MONTRÉAL</span
+        ><span>AVAILABLE FOR BACKEND, QA & TECHNICAL SUPPORT ROLES</span
+        ><span>SELECTED WORK / 2026</span>
+      </div>
+      <section id="work" class="work">
+        <div class="section-intro">
+          <span class="mono section-kicker">01 / SELECTED WORK</span>
+          <h2>Follow a problem.<br /><em>Keep the context.</em></h2>
+          <p>
+            Two working tools built around the same idea: a failure is easier to
+            fix when the evidence stays connected.
+          </p>
+        </div>
+        <article class="project relay-project">
+          <div class="project-copy">
+            <span class="project-index mono">01 / RELAY</span>
+            <h3>A field desk<br />for broken<br /><em>integrations.</em></h3>
+            <p>
+              Failed webhooks. Rejected imports. A request that times out
+              somewhere between services. Relay turns the investigation into a
+              case file someone else can pick up.
+            </p>
+            <ul class="project-points">
+              <li><span>01</span>Runbooks matched to the incident type</li>
+              <li><span>02</span>Saved checks and a complete case history</li>
+              <li>
+                <span>03</span>Version checks that protect concurrent edits
+              </li>
+            </ul>
+            <div class="project-stack mono">
+              TYPESCRIPT / REACT / SQLITE / REST API
+            </div>
+            <div class="project-actions">
+              <a
+                class="button outline"
+                href="https://edmond-relay-support.regal-pixie-9265.chatgpt.site/"
+                target="_blank"
+                rel="noreferrer"
+                >Try Relay<svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 18L18 6M6 6h12v12" /></svg></a
+              ><a
+                class="text-link"
+                href="https://github.com/edmondbassey/First-repository/tree/main/projects/relay"
+                target="_blank"
+                rel="noreferrer"
+                >Inspect the code<svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" /></svg
+              ></a>
+            </div>
+          </div>
+          <div class="project-visual">
+            <div class="browser-caption mono">
+              <span>RELAY / INTEGRATION INCIDENT DESK</span
+              ><span>WORKING DEMO</span>
+            </div>
+            <img
+              src="images/relay.jpg"
+              alt="Relay incident desk with an integration case, evidence and investigation checklist"
+              loading="lazy"
+              width="1348"
+              height="926"
+            />
+            <div class="visual-foot">
+              <span class="mono">THE DETAIL</span>
+              <p>
+                A failed update cannot leave behind a misleading history entry.
+              </p>
+            </div>
+          </div>
+        </article>
+        <article class="project logbook-project">
+          <div class="project-copy">
+            <span class="project-index mono">02 / LOGBOOK</span>
+            <h3>
+              Less noise.<br /><em>A clearer<br />request trail.</em>
+            </h3>
+            <p>
+              A stack of logs is not an explanation. Logbook groups repeated
+              failures and follows one request across its service events,
+              without sending the capture to a server.
+            </p>
+            <ul class="project-points">
+              <li>
+                <span>01</span>Error families with the original events intact
+              </li>
+              <li><span>02</span>Request timelines from observed timestamps</li>
+              <li>
+                <span>03</span>Local imports and an exportable investigation
+              </li>
+            </ul>
+            <div class="project-stack mono">
+              JAVASCRIPT / JSONL / LOCAL PROCESSING
+            </div>
+            <div class="project-actions">
+              <a
+                class="button outline"
+                href="https://edmond-logbook.regal-pixie-9265.chatgpt.site/"
+                target="_blank"
+                rel="noreferrer"
+                >Try Logbook<svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 18L18 6M6 6h12v12" /></svg></a
+              ><a
+                class="text-link"
+                href="https://github.com/edmondbassey/First-repository/tree/main/projects/logbook"
+                target="_blank"
+                rel="noreferrer"
+                >Inspect the code<svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" /></svg
+              ></a>
+            </div>
+          </div>
+          <div class="project-visual">
+            <div class="browser-caption mono">
+              <span>LOGBOOK / EVENT FORENSICS</span><span>WORKING DEMO</span>
+            </div>
+            <img
+              src="images/logbook.jpg"
+              alt="Logbook's dark workbench displaying recurring error groups and capture density"
+              loading="lazy"
+              width="1348"
+              height="926"
+            />
+            <div class="visual-foot">
+              <span class="mono">THE DETAIL</span>
+              <p>
+                Chronological events are useful evidence. They are not proof of
+                causality.
+              </p>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section id="approach" class="approach">
+        <div class="approach-heading">
+          <span class="mono section-kicker">02 / HOW I THINK</span>
+          <h2>The happy path<br />is only <em>the start.</em></h2>
+          <p>
+            The parts I pay attention to are the ones that can quietly lose
+            context, overwrite a change or make a problem harder to reproduce.
+          </p>
+        </div>
+        <div class="decision-list">
+          <a
+            href="https://github.com/edmondbassey/First-repository/blob/main/projects/relay/test/incidents.test.ts"
+            target="_blank"
+            rel="noreferrer"
+            ><span class="decision-index mono">01</span>
+            <div>
+              <h3>Keep the record honest.</h3>
+              <p>
+                Checks, case changes and history entries are tested together. A
+                failed write should leave a clear result.
+              </p>
+            </div>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 18L18 6M6 6h12v12" /></svg></a
+          ><a
+            href="https://github.com/edmondbassey/First-repository/blob/main/projects/logbook/src/forensics.js"
+            target="_blank"
+            rel="noreferrer"
+            ><span class="decision-index mono">02</span>
+            <div>
+              <h3>Show what the data can support.</h3>
+              <p>
+                Error grouping keeps HTTP statuses separate. Request trails show
+                observed order, with the original events one click away.
+              </p>
+            </div>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 18L18 6M6 6h12v12" /></svg></a
+          ><a
+            href="https://github.com/edmondbassey/First-repository"
+            target="_blank"
+            rel="noreferrer"
+            ><span class="decision-index mono">03</span>
+            <div>
+              <h3>Make it possible to check the work.</h3>
+              <p>
+                Source code, automated checks, setup instructions and notes on
+                the decisions behind each project.
+              </p>
+            </div>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 18L18 6M6 6h12v12" /></svg
+          ></a>
+        </div>
+      </section>
+      <section id="about" class="about">
+        <div>
+          <span class="mono section-kicker">03 / A LITTLE CONTEXT</span>
+          <h2>Curious about people.<br /><em>Particular about systems.</em></h2>
+        </div>
+        <div class="about-copy">
+          <p>
+            I’m a freelance backend engineer based in Montréal. I’ve also worked
+            in retail, where a clear explanation and a useful next step matter
+            just as much as finding the problem.
+          </p>
+          <p>
+            I studied cognitive science at Carleton University and I’m currently
+            studying computer science at the University of London. Client work
+            stays private under client agreements; these projects give you code
+            you can inspect and demos you can try.
+          </p>
+          <div class="about-tags mono">
+            <span>BACKEND DEVELOPMENT</span><span>SOFTWARE TESTING</span
+            ><span>TECHNICAL SUPPORT</span>
+          </div>
+        </div>
+      </section>
+      <section class="contact">
+        <span class="mono section-kicker">HAVE SOMETHING IN MIND?</span>
+        <h2>Let’s make the<br /><em>next step clearer.</em></h2>
+        <a class="contact-email" href="mailto:Edmondbassey02@gmail.com"
+          >Edmondbassey02@gmail.com<svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 18L18 6M6 6h12v12" /></svg
+        ></a>
+        <div class="contact-note">
+          Open to remote backend, QA and technical support work.
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <a class="monogram" href="./" aria-label="Back to top"
+        >e<span>b</span><i>.</i></a
+      ><span class="mono">EDMOND BASSEY / SELECTED WORK</span
+      ><a
+        href="https://github.com/edmondbassey"
+        target="_blank"
+        rel="noreferrer"
+        >GitHub<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 18L18 6M6 6h12v12" /></svg
+      ></a>
+    </footer>
+  </body>
+</html>

@@ -2,36 +2,68 @@ import {
   parseLogs,
   filterRecords,
   summarize,
-  endpoints,
   timeline,
   exportCsv,
   MAX_BYTES,
 } from "./analyzer.js";
-const $ = (id) => document.getElementById(id);
+import {
+  errorGroups,
+  requestTraces,
+  investigationReport,
+} from "./forensics.js";
+const $ = (id) => document.getElementById(id),
+  PAGE_SIZE = 20;
 let records = [],
   issues = [],
   filtered = [],
+  view = "groups",
   page = 0,
-  selected = null,
-  source = "demo.jsonl",
+  source = "integration-events.jsonl",
   dragDepth = 0;
-const PAGE_SIZE = 25,
-  filters = { query: "", service: "all", level: "all" };
-function el(tag, className, text) {
+const filters = { query: "", service: "all", level: "all" };
+function el(tag, css = "", text) {
   const node = document.createElement(tag);
-  if (className) node.className = className;
+  node.className = css;
   if (text !== undefined) node.textContent = String(text);
   return node;
 }
-function formatTime(iso) {
-  return iso ? new Date(iso).toISOString().slice(11, 23) : "Unknown";
+function icon(name, size = 16) {
+  const paths = {
+    arrow: "M5 12h14M13 6l6 6-6 6",
+    open: "M6 18L18 6M6 6h12v12",
+    down: "M12 4v12M7 11l5 5 5-5M5 19v2h14v-2",
+  };
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", size);
+  svg.setAttribute("height", size);
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(svg.namespaceURI, "path");
+  path.setAttribute("d", paths[name] ?? paths.arrow);
+  svg.append(path);
+  return svg;
+}
+function formatTime(time) {
+  return time ? new Date(time).toISOString().slice(11, 23) : "No timestamp";
+}
+function span(ms) {
+  return ms === null
+    ? "No timing"
+    : ms < 1000
+      ? ms + " ms"
+      : (ms / 1000).toFixed(2) + " s";
 }
 function error(message) {
   $("error").textContent = message;
   $("error").hidden = !message;
 }
-function close(id) {
-  $(id).close();
+function download(text, name, type) {
+  const a = el("a"),
+    url = URL.createObjectURL(new Blob([text], { type }));
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 function reset() {
   filters.query = "";
@@ -39,30 +71,32 @@ function reset() {
   filters.level = "all";
   $("search").value = "";
   $("service").value = "all";
-  $("other-level").value = "all";
+  $("level").value = "all";
   page = 0;
   render();
 }
-function load(text, name, isSample = false) {
+function setView(next) {
+  view = next;
+  page = 0;
+  render();
+}
+function load(text, name, sample = false) {
   try {
     const result = parseLogs(text);
     if (!result.records.length)
       throw new Error(
         result.issues.length
-          ? "No readable events. Use one JSON object per line, with a message or msg field."
-          : "This file has no events.",
+          ? "No readable events. Include a message or msg field in each JSON object."
+          : "This capture has no events.",
       );
     records = result.records;
     issues = result.issues;
     source = name;
     error("");
     $("source-name").textContent = name;
-    $("source-type").textContent = isSample ? "SAMPLE" : "LOCAL";
+    $("source-type").textContent = sample ? "FIXTURE" : "LOCAL";
     $("source-info").textContent =
-      records.length.toLocaleString() +
-      " readable events · " +
-      result.totalLines.toLocaleString() +
-      " lines";
+      records.length + " events / " + result.totalLines + " source lines";
     $("service").replaceChildren(new Option("All services", "all"));
     for (const service of [...new Set(records.map((r) => r.service))].sort())
       $("service").add(new Option(service, service));
@@ -74,25 +108,25 @@ function load(text, name, isSample = false) {
           "span",
           "",
           issues.length +
-            " line" +
+            " source line" +
             (issues.length === 1 ? " was" : "s were") +
             " skipped.",
         ),
       );
-      const button = el("button", "text-button", "Review import issues →");
+      const button = el("button", "", "Review import notes");
       button.onclick = () => {
         const list = $("issues-list");
         list.replaceChildren();
         for (const issue of issues.slice(0, 100)) {
-          const li = el("li", "");
-          li.append(
-            el("strong", "", "Line " + issue.line),
+          const item = el("li");
+          item.append(
+            el("strong", "", "LINE " + issue.line),
             el("span", "", issue.reason),
           );
-          list.append(li);
+          list.append(item);
         }
         if (issues.length > 100)
-          list.append(el("li", "", "Showing the first 100 issues."));
+          list.append(el("li", "", "Showing the first 100 notes."));
         $("issues-dialog").showModal();
       };
       $("notice").append(button);
@@ -107,223 +141,448 @@ function load(text, name, isSample = false) {
 function render() {
   filtered = filterRecords(records, filters);
   const summary = summarize(filtered),
-    all = summarize(filterRecords(records, { ...filters, level: "all" }));
+    groups = errorGroups(filtered),
+    traces = requestTraces(filtered);
   $("metric-events").textContent = summary.count.toLocaleString();
   $("metric-errors").textContent = summary.errors.toLocaleString();
   $("metric-error-rate").textContent =
-    summary.errorRate.toFixed(1) + "% of filtered events";
+    summary.errorRate.toFixed(1) + "% of events in view";
+  $("metric-groups").textContent = groups.length;
   $("metric-p95").replaceChildren(
     el("span", "", summary.p95 === null ? "—" : summary.p95.toLocaleString()),
     el("em", "", summary.p95 === null ? "" : "ms"),
   );
   $("metric-duration-count").textContent =
     summary.durationCount + " measured events";
-  $("metric-services").textContent = summary.services;
-  $("view-count").textContent = summary.count.toLocaleString();
   $("metric-events-note").textContent =
-    filters.query || filters.level !== "all" || filters.service !== "all"
-      ? "Filtered from " + records.length + " total"
-      : "All readable events";
-  for (const level of ["all", "info", "warn", "error", "fatal"])
-    $("count-" + level).textContent =
-      level === "all" ? all.count : all.counts[level];
-  document.querySelectorAll("[data-level]").forEach((button) => {
-    const chosen = button.dataset.level === filters.level;
-    button.classList.toggle("selected", chosen);
-    button.setAttribute("aria-pressed", String(chosen));
+    filtered.length === records.length
+      ? "All readable records"
+      : "Filtered from " + records.length + " events";
+  $("nav-events").textContent = summary.count;
+  $("nav-groups").textContent = groups.length;
+  $("nav-traces").textContent = traces.length;
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === view);
+    button.setAttribute("aria-pressed", String(button.dataset.view === view));
   });
-  $("other-level").value = ["debug", "trace", "unknown"].includes(filters.level)
-    ? filters.level
-    : "all";
-  const series = timeline(filtered),
+  const config = {
+    groups: [
+      "01",
+      "Recurring error groups",
+      "SERVICE + STATUS + PATH + MESSAGE PATTERN",
+    ],
+    traces: [
+      "02",
+      "Request trails",
+      "CHRONOLOGICAL EVENTS SHARING A REQUEST ID",
+    ],
+    events: ["03", "Event stream", "RAW CONTEXT, ONE EVENT AT A TIME"],
+  }[view];
+  $("view-index").textContent = config[0];
+  $("view-title").textContent = config[1];
+  $("view-description").textContent = config[2];
+  const series = timeline(filtered, 36),
     chart = $("timeline");
   chart.replaceChildren();
   chart.setAttribute(
     "aria-label",
-    summary.count +
-      " events shown across time; " +
-      summary.errors +
-      " error events.",
+    filtered.length + " filtered events; " + summary.errors + " error events.",
   );
   if (series.bins.length) {
     const max = Math.max(1, ...series.bins.map((b) => b.count));
-    series.bins.forEach((bin) => {
-      const column = el("div", "bar-column"),
-        bar = el("div", "bar"),
-        err = el("div", "bar-errors");
+    for (const bin of series.bins) {
+      const column = el("div", "map-column"),
+        bar = el("div", "map-bar"),
+        errors = el("div", "map-errors");
       bar.style.height = Math.max(2, (bin.count / max) * 100) + "%";
-      bar.title = bin.count + " events, " + bin.errors + " errors";
-      err.style.height = (bin.count ? (bin.errors / bin.count) * 100 : 0) + "%";
-      bar.append(err);
+      bar.title = bin.count + " events / " + bin.errors + " errors";
+      errors.style.height =
+        (bin.count ? (bin.errors / bin.count) * 100 : 0) + "%";
+      bar.append(errors);
       column.append(bar);
       chart.append(column);
-    });
+    }
     $("timeline-start").textContent =
-      new Date(series.start).toISOString().replace("T", " ").slice(0, 19) +
+      new Date(series.start).toISOString().replace("T", " ").slice(0, 23) +
       " UTC";
     $("timeline-end").textContent =
-      new Date(series.end).toISOString().slice(11, 19) + " UTC";
+      formatTime(new Date(series.end).toISOString()) + " UTC";
   } else {
-    chart.append(el("p", "chart-empty", "No timestamped events in this view."));
+    chart.append(el("p", "empty-map", "No readable timestamps in this view."));
     $("timeline-start").textContent = "";
     $("timeline-end").textContent = "";
   }
-  const endpointList = $("endpoints");
-  endpointList.replaceChildren();
-  const groups = endpoints(filtered).slice(0, 4);
-  for (const group of groups) {
-    const button = el("button", "endpoint-row"),
-      left = el("div", ""),
-      count = el("span", "endpoint-count", group.errors);
-    left.append(
-      el("code", "", group.path),
-      el(
-        "small",
-        "",
-        group.count +
-          " requests · p95 " +
-          (group.p95 === null ? "—" : group.p95 + " ms"),
-      ),
-    );
-    button.append(left, count);
-    button.title = "Filter by " + group.path;
-    button.onclick = () => {
-      $("search").value = group.path;
-      filters.query = group.path;
-      page = 0;
-      render();
-    };
-    endpointList.append(button);
-  }
-  if (!groups.length)
-    endpointList.append(
-      el("p", "endpoint-empty", "Events with a path field appear here."),
-    );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const data =
+      view === "groups" ? groups : view === "traces" ? traces : filtered,
+    totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
   page = Math.min(page, totalPages - 1);
-  const rows = $("event-rows");
-  rows.replaceChildren();
-  for (const record of filtered.slice(
-    page * PAGE_SIZE,
-    (page + 1) * PAGE_SIZE,
-  )) {
-    const row = el("tr", ""),
-      time = el("td", "event-time", formatTime(record.timestamp)),
-      level = el("td", ""),
-      service = el("td", ""),
-      message = el("td", "message-cell"),
-      duration = el(
-        "td",
-        "duration",
-        record.duration === null ? "—" : record.duration + " ms",
+  $("view-count").textContent = data.length;
+  $("results").replaceChildren();
+  if (!data.length) {
+    const empty = el("div", "empty");
+    empty.append(
+      el("span", "empty-index", "[ ∅ ]"),
+      el(
+        "h3",
+        "",
+        view === "groups"
+          ? "No recurring failures in this view."
+          : view === "traces"
+            ? "No request IDs in this view."
+            : "No matching events.",
       ),
-      open = el("td", "");
-    level.append(el("span", "level level-" + record.level, record.level));
-    service.append(el("span", "service-name", record.service));
-    const button = el("button", "message-button", record.message);
-    button.onclick = () => showEvent(record);
-    button.setAttribute(
-      "aria-label",
-      "Inspect line " + record.line + ": " + record.message,
+      el(
+        "p",
+        "",
+        view === "traces"
+          ? "Include request_id or requestId to connect service events."
+          : "Try another service, severity or search term.",
+      ),
     );
-    message.append(button);
-    if (record.requestId)
-      message.append(el("small", "request-id", record.requestId));
-    const arrow = el("button", "row-open", "↗");
-    arrow.setAttribute("aria-label", "Open event on line " + record.line);
-    arrow.onclick = () => showEvent(record);
-    open.append(arrow);
-    row.append(time, level, service, message, duration, open);
-    rows.append(row);
+    const button = el("button", "secondary", "Clear filters");
+    button.onclick = reset;
+    empty.append(button);
+    $("results").append(empty);
+  } else if (view === "groups") {
+    for (const group of data.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)) {
+      const row = el("button", "group-row");
+      row.setAttribute("aria-label", "Inspect error group: " + group.pattern);
+      const count = el("div", "group-frequency");
+      count.append(
+        el("strong", "", String(group.events.length).padStart(2, "0")),
+        el("span", "", "EVENTS"),
+      );
+      const body = el("div", "group-main");
+      const meta = el("div", "group-meta");
+      meta.append(
+        el("span", "service-name", group.service),
+        el("span", "level level-" + group.level, group.level),
+      );
+      if (group.status !== null)
+        meta.append(el("span", "http-code", "HTTP " + group.status));
+      body.append(
+        meta,
+        el("h3", "", group.pattern),
+        el("p", "path", group.path || "No path supplied"),
+      );
+      const trailing = el("div", "group-trailing");
+      trailing.append(
+        el("span", "", group.requestIds.length + " request IDs"),
+        icon("open"),
+      );
+      row.append(count, body, trailing);
+      row.onclick = () => showGroup(group);
+      $("results").append(row);
+    }
+  } else if (view === "traces") {
+    for (const trace of data.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)) {
+      const row = el("button", "trace-row");
+      row.setAttribute("aria-label", "Follow request " + trace.id);
+      const label = el("div", "trace-identity");
+      label.append(
+        el("code", "", trace.id),
+        el(
+          "small",
+          "",
+          trace.events.length +
+            " events / " +
+            trace.services.length +
+            " services",
+        ),
+      );
+      const route = el("div", "trace-services");
+      trace.services.slice(0, 4).forEach((s, index) => {
+        if (index) route.append(icon("arrow", 12));
+        route.append(el("span", "", s));
+      });
+      const result = el("div", "trace-result");
+      result.append(
+        el(
+          "strong",
+          trace.errors ? "trace-error" : "",
+          trace.errors ? trace.errors + " errors" : "No errors",
+        ),
+        el("small", "", span(trace.spanMs)),
+      );
+      row.append(label, route, result, icon("open"));
+      row.onclick = () => showTrace(trace);
+      $("results").append(row);
+    }
+  } else {
+    const table = el("table", "event-table"),
+      head = el("thead"),
+      header = el("tr");
+    for (const title of [
+      "TIME / UTC",
+      "LEVEL",
+      "SERVICE",
+      "MESSAGE",
+      "LATENCY",
+      "",
+    ])
+      header.append(el("th", "", title));
+    head.append(header);
+    table.append(head);
+    const body = el("tbody");
+    for (const record of data.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)) {
+      const row = el("tr"),
+        level = el("td"),
+        service = el("td"),
+        message = el("td", "message-cell"),
+        open = el("td");
+      level.append(el("span", "level level-" + record.level, record.level));
+      service.append(el("span", "service-name", record.service));
+      const button = el("button", "event-message", record.message);
+      button.setAttribute("aria-label", "Inspect event on line " + record.line);
+      button.onclick = () => showEvent(record);
+      message.append(button);
+      if (record.requestId) {
+        const request = el("button", "request-link", record.requestId);
+        request.onclick = () =>
+          showTrace(
+            requestTraces(records).find((t) => t.id === record.requestId),
+          );
+        message.append(request);
+      }
+      const arrow = el("button", "event-open");
+      arrow.setAttribute("aria-label", "Open source line " + record.line);
+      arrow.append(icon("open"));
+      arrow.onclick = () => showEvent(record);
+      open.append(arrow);
+      row.append(
+        el("td", "event-time", formatTime(record.timestamp)),
+        level,
+        service,
+        message,
+        el(
+          "td",
+          "duration",
+          record.duration === null ? "—" : span(record.duration),
+        ),
+        open,
+      );
+      body.append(row);
+    }
+    table.append(body);
+    const wrap = el("div", "table-wrap");
+    wrap.append(table);
+    $("results").append(wrap);
   }
-  $("empty").hidden = filtered.length > 0;
-  $("page-info").textContent = filtered.length
-    ? "Showing " +
+  $("page-info").textContent = data.length
+    ? "SHOWING " +
       (page * PAGE_SIZE + 1) +
       "–" +
-      Math.min((page + 1) * PAGE_SIZE, filtered.length) +
-      " of " +
-      filtered.length +
-      " events"
-    : "0 events";
+      Math.min((page + 1) * PAGE_SIZE, data.length) +
+      " OF " +
+      data.length
+    : "0 RESULTS";
+  $("pagination").hidden = totalPages <= 1;
   $("page-number").textContent = page + 1 + " / " + totalPages;
   $("prev").disabled = page === 0;
   $("next").disabled = page + 1 >= totalPages;
-  $("export").disabled = !filtered.length;
+  $("export-csv").disabled = !filtered.length;
+  $("export-report").disabled = !filtered.length;
 }
-function showEvent(record) {
-  selected = record;
-  $("event-title").textContent = record.message;
-  $("event-meta").replaceChildren(
-    el("span", "level level-" + record.level, record.level),
-    el("span", "service-name", record.service),
+function openDetail(label, title) {
+  $("detail-label").textContent = label;
+  $("detail-title").textContent = title;
+  $("detail-meta").replaceChildren();
+  $("detail-body").replaceChildren();
+  if (!$("detail-dialog").open) $("detail-dialog").showModal();
+}
+function showGroup(group) {
+  openDetail("ERROR GROUP / " + group.events.length + " EVENTS", group.pattern);
+  $("detail-meta").append(
+    el("span", "service-name", group.service),
+    el("span", "level level-" + group.level, group.level),
   );
-  const properties = $("event-properties");
-  properties.replaceChildren();
+  const summary = el("div", "detail-summary");
+  summary.append(
+    el("p", "", group.path || "No endpoint supplied"),
+    el(
+      "p",
+      "",
+      group.requestIds.length +
+        " request IDs / first seen " +
+        formatTime(group.first) +
+        " UTC",
+    ),
+  );
+  $("detail-body").append(summary);
+  const intro = el("div", "detail-section-title", "MATCHING EVENTS");
+  $("detail-body").append(intro);
+  for (const event of group.events.slice(0, 80)) {
+    const row = el("button", "matching-event");
+    row.append(
+      el("time", "", formatTime(event.timestamp)),
+      el("span", "", event.message),
+      el("code", "", event.requestId || "No request ID"),
+      icon("arrow"),
+    );
+    row.setAttribute(
+      "aria-label",
+      "Inspect grouped event on line " + event.line,
+    );
+    row.onclick = () => showEvent(event);
+    $("detail-body").append(row);
+  }
+  if (group.requestIds.length) {
+    const button = el(
+      "button",
+      "primary detail-action",
+      "Follow request " + group.requestIds[0],
+    );
+    button.append(icon("arrow"));
+    button.onclick = () =>
+      showTrace(
+        requestTraces(records).find((t) => t.id === group.requestIds[0]),
+      );
+    $("detail-body").append(button);
+  }
+  const note = el(
+    "p",
+    "method-note",
+    "Grouping keeps service, severity and HTTP status separate. Variable IDs and numeric path segments are normalized.",
+  );
+  $("detail-body").append(note);
+}
+function showTrace(trace) {
+  if (!trace) return;
+  openDetail(
+    "REQUEST TRAIL / " + trace.services.length + " SERVICES",
+    trace.id,
+  );
+  $("detail-meta").append(
+    el(
+      "span",
+      trace.errors ? "trace-error" : "trace-ok",
+      trace.errors + " error events",
+    ),
+    el("span", "", span(trace.spanMs) + " observed span"),
+  );
+  $("detail-body").append(
+    el(
+      "p",
+      "method-note",
+      "Events share a request ID. The order below is observed chronology, not inferred parent/child spans.",
+    ),
+  );
+  const trail = el("div", "request-trail");
+  for (const event of trace.events) {
+    const row = el(
+      "button",
+      "trail-step " +
+        (event.level === "error" ||
+        event.level === "fatal" ||
+        event.status >= 500
+          ? "failed"
+          : ""),
+    );
+    const offset =
+      event.timestamp && trace.start
+        ? Date.parse(event.timestamp) - Date.parse(trace.start)
+        : null;
+    const marker = el("span", "trail-marker"),
+      timing = el("div", "trail-timing");
+    timing.append(
+      el("strong", "", offset === null ? "—" : "+" + span(offset)),
+      el("small", "", formatTime(event.timestamp)),
+    );
+    const body = el("div", "trail-body");
+    body.append(
+      el("span", "service-name", event.service),
+      el("p", "", event.message),
+    );
+    if (event.status)
+      body.append(el("small", "http-code", "HTTP " + event.status));
+    row.append(marker, timing, body, icon("open", 13));
+    row.onclick = () => showEvent(event);
+    row.setAttribute(
+      "aria-label",
+      "Inspect request event on line " + event.line,
+    );
+    trail.append(row);
+  }
+  $("detail-body").append(trail);
+}
+function showEvent(event) {
+  openDetail("SOURCE LINE / " + event.line, event.message);
+  $("detail-meta").append(
+    el("span", "level level-" + event.level, event.level),
+    el("span", "service-name", event.service),
+  );
+  const properties = el("dl", "event-properties");
   for (const [key, value] of [
-    ["Source line", record.line],
-    ["Timestamp", record.timestamp ?? "Not supplied"],
-    ["Service", record.service],
-    ["HTTP status", record.status ?? "Not supplied"],
-    [
-      "Latency",
-      record.duration === null ? "Not supplied" : record.duration + " ms",
-    ],
-    ["Request ID", record.requestId || "Not supplied"],
-    ["Path", record.path || "Not supplied"],
+    ["Timestamp", event.timestamp || "Not supplied"],
+    ["Request ID", event.requestId || "Not supplied"],
+    ["Endpoint", event.path || "Not supplied"],
+    ["HTTP status", event.status ?? "Not supplied"],
+    ["Duration", span(event.duration)],
   ])
     properties.append(el("dt", "", key), el("dd", "", value));
-  $("raw-json").textContent = JSON.stringify(record.raw, null, 2);
-  $("copy-status").textContent = "";
-  $("copy-json").textContent = "Copy JSON";
-  $("event-dialog").showModal();
+  $("detail-body").append(properties);
+  if (event.requestId) {
+    const button = el(
+      "button",
+      "secondary detail-action",
+      "Follow this request",
+    );
+    button.append(icon("arrow"));
+    button.onclick = () =>
+      showTrace(requestTraces(records).find((t) => t.id === event.requestId));
+    $("detail-body").append(button);
+  }
+  const heading = el("div", "raw-heading");
+  heading.append(el("h3", "", "RAW EVENT"));
+  const copy = el("button", "copy-button", "Copy JSON"),
+    result = el("span", "copy-result");
+  result.setAttribute("role", "status");
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(event.raw, null, 2));
+      result.textContent = "Copied";
+    } catch {
+      result.textContent = "Select the raw JSON to copy it.";
+    }
+  };
+  heading.append(copy);
+  $("detail-body").append(
+    heading,
+    el("pre", "raw-json", JSON.stringify(event.raw, null, 2)),
+    result,
+  );
 }
 async function importFile(file) {
   if (!file) return;
   if (file.size > MAX_BYTES) {
-    error("Choose a file smaller than 2 MB.");
+    error("Choose a capture smaller than 2 MB.");
     return;
   }
   try {
     load(await file.text(), file.name);
   } catch {
-    error("This file could not be read.");
+    error("The capture could not be read.");
   }
 }
-$("import-side").onclick = $("import-main").onclick = () =>
-  $("file-input").click();
-$("file-input").onchange = async (event) => {
-  await importFile(event.target.files[0]);
-  event.target.value = "";
-};
-$("search").oninput = (event) => {
-  filters.query = event.target.value;
+document
+  .querySelectorAll("[data-view]")
+  .forEach((button) => (button.onclick = () => setView(button.dataset.view)));
+$("search").oninput = (e) => {
+  filters.query = e.target.value;
   page = 0;
   render();
 };
-$("service").onchange = (event) => {
-  filters.service = event.target.value;
+$("service").onchange = (e) => {
+  filters.service = e.target.value;
   page = 0;
   render();
 };
-document.querySelectorAll("[data-level]").forEach(
-  (button) =>
-    (button.onclick = () => {
-      filters.level = button.dataset.level;
-      page = 0;
-      render();
-    }),
-);
-$("other-level").onchange = (event) => {
-  filters.level = event.target.value;
+$("level").onchange = (e) => {
+  filters.level = e.target.value;
   page = 0;
   render();
 };
-$("try-errors").onclick = () => {
-  filters.level = "error";
-  page = 0;
-  render();
-};
+$("reset").onclick = reset;
 $("prev").onclick = () => {
   page--;
   render();
@@ -332,79 +591,73 @@ $("next").onclick = () => {
   page++;
   render();
 };
-$("reset-filters").onclick = $("empty-reset").onclick = reset;
-$("paste-open").onclick = () => $("paste-dialog").showModal();
-$("paste-form").onsubmit = (event) => {
-  event.preventDefault();
-  if (load($("paste-text").value, "Pasted logs")) close("paste-dialog");
+$("import-side").onclick = $("import-main").onclick = () =>
+  $("file-input").click();
+$("file-input").onchange = async (e) => {
+  await importFile(e.target.files[0]);
+  e.target.value = "";
 };
+$("paste-open").onclick = () => $("paste-dialog").showModal();
+$("paste-form").onsubmit = (e) => {
+  e.preventDefault();
+  if (load($("paste-text").value, "Pasted capture")) $("paste-dialog").close();
+};
+$("export-csv").onclick = () =>
+  download(exportCsv(filtered), "logbook-events.csv", "text/csv;charset=utf-8");
+$("export-report").onclick = () =>
+  download(
+    investigationReport(filtered, source),
+    "logbook-investigation.md",
+    "text/markdown;charset=utf-8",
+  );
 document
   .querySelectorAll("[data-close]")
-  .forEach((button) => (button.onclick = () => close(button.dataset.close)));
+  .forEach(
+    (button) => (button.onclick = () => $(button.dataset.close).close()),
+  );
 document.querySelectorAll("dialog").forEach(
   (dialog) =>
-    (dialog.onclick = (event) => {
-      if (event.target === dialog) dialog.close();
+    (dialog.onclick = (e) => {
+      if (e.target === dialog) dialog.close();
     }),
 );
-$("copy-json").onclick = async () => {
-  try {
-    await navigator.clipboard.writeText(JSON.stringify(selected.raw, null, 2));
-    $("copy-json").textContent = "Copied";
-    $("copy-status").textContent = "JSON copied.";
-  } catch {
-    $("copy-status").textContent =
-      "Copy is unavailable. Select and copy the raw event below.";
-  }
-};
-$("export").onclick = () => {
-  const blob = new Blob([exportCsv(filtered)], {
-      type: "text/csv;charset=utf-8;",
-    }),
-    url = URL.createObjectURL(blob),
-    a = document.createElement("a");
-  a.href = url;
-  a.download = "logbook-filtered-events.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-};
-document.addEventListener("keydown", (event) => {
+document.addEventListener("keydown", (e) => {
   if (
-    event.key === "/" &&
+    e.key === "/" &&
     !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) &&
     !document.querySelector("dialog[open]")
   ) {
-    event.preventDefault();
+    e.preventDefault();
     $("search").focus();
   }
 });
-document.addEventListener("dragenter", (event) => {
-  if ([...event.dataTransfer.types].includes("Files")) {
-    event.preventDefault();
+document.addEventListener("dragenter", (e) => {
+  if ([...e.dataTransfer.types].includes("Files")) {
+    e.preventDefault();
     dragDepth++;
     $("drop-overlay").hidden = false;
   }
 });
-document.addEventListener("dragover", (event) => {
-  if ([...event.dataTransfer.types].includes("Files")) event.preventDefault();
+document.addEventListener("dragover", (e) => {
+  if ([...e.dataTransfer.types].includes("Files")) e.preventDefault();
 });
 document.addEventListener("dragleave", () => {
   dragDepth = Math.max(0, dragDepth - 1);
   if (!dragDepth) $("drop-overlay").hidden = true;
 });
-document.addEventListener("drop", (event) => {
-  event.preventDefault();
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
   dragDepth = 0;
   $("drop-overlay").hidden = true;
-  importFile(event.dataTransfer.files[0]);
+  importFile(e.dataTransfer.files[0]);
 });
 try {
   const response = await fetch("demo.jsonl");
   if (!response.ok) throw new Error();
-  load(await response.text(), "demo.jsonl", true);
+  load(await response.text(), "integration-events.jsonl", true);
 } catch {
   error(
-    "The sample file could not be loaded. Import a file or paste logs to begin.",
+    "The fixture could not be loaded. Open a capture or paste JSONL to begin.",
   );
   render();
 }

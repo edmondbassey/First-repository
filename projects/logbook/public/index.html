@@ -5,296 +5,309 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="Explore JSONL logs, follow errors and inspect latency. Your imported files stay in your browser."
+      content="Group recurring failures and follow a request across service events. A local-first debugging workbench."
     />
-    <title>Logbook — Log explorer</title>
+    <title>Logbook — Event forensics</title>
     <link rel="icon" href="favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="app.js"></script>
   </head>
   <body>
-    <a href="#main" class="skip">Skip to explorer</a>
-    <header class="header">
-      <a href="./" class="brand"
-        ><svg viewBox="0 0 26 30" aria-hidden="true">
+    <a class="skip" href="#workbench">Skip to workbench</a>
+    <header class="topbar">
+      <a class="brand" href="./"
+        ><svg viewBox="0 0 28 28" aria-hidden="true">
           <path
-            d="M3 3h15l5 5v19H3z"
+            d="M5 3h14l4 4v18H5zM17 3v6h6M9 13h10M9 18h7"
             fill="none"
             stroke="currentColor"
-            stroke-width="2"
-          />
-          <path
-            d="M17 3v6h6M7 14h11M7 19h8"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+            stroke-width="1.5"
           /></svg
-        >logbook<span> / </span><small>log explorer</small></a
+        >logbook<span class="brand-divider">/</span
+        ><span class="brand-small">EVENT FORENSICS</span></a
       >
-      <div class="header-right">
-        <span class="local-pill"><i></i>Runs locally in your browser</span
+      <div class="topbar-right">
+        <span class="local-label"><i></i>LOCAL PROCESSING</span
         ><a
           href="https://github.com/edmondbassey/First-repository/tree/main/projects/logbook"
-          class="source-link"
-          >View source ↗</a
-        >
+          target="_blank"
+          rel="noreferrer"
+          >Source<svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 18L18 6M6 6h12v12" /></svg
+        ></a>
       </div>
     </header>
-    <div class="layout">
+    <div class="shell">
       <aside class="sidebar">
-        <p class="nav-label">YOUR SESSION</p>
-        <button class="nav-item active">
-          <span>▤</span>Log explorer<span class="nav-arrow">↗</span>
-        </button>
-        <div class="source-card">
-          <div class="card-label">
-            CURRENT SOURCE<span id="source-type">SAMPLE</span>
+        <div class="side-index">WORKBENCH / 02</div>
+        <nav aria-label="Investigation view">
+          <button data-view="groups" class="active" aria-pressed="true">
+            <span class="nav-number">01</span>Error groups<span id="nav-groups"
+              >—</span
+            ></button
+          ><button data-view="traces" aria-pressed="false">
+            <span class="nav-number">02</span>Request trails<span
+              id="nav-traces"
+              >—</span
+            ></button
+          ><button data-view="events" aria-pressed="false">
+            <span class="nav-number">03</span>Event stream<span id="nav-events"
+              >—</span
+            >
+          </button>
+        </nav>
+        <div class="capture">
+          <div class="capture-heading">
+            OPEN CAPTURE<span id="source-type">FIXTURE</span>
           </div>
-          <div class="file-icon">﹤/﹥</div>
-          <strong id="source-name">demo.jsonl</strong>
-          <p id="source-info">Loading sample events…</p>
-          <button id="import-side">Import a file <span>↑</span></button>
+          <div class="file-glyph">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M10 5h15l6 6v24H10zM24 5v8h7M15 20h11M15 26h8" />
+            </svg>
+          </div>
+          <strong id="source-name">integration-events.jsonl</strong>
+          <p id="source-info">Reading capture…</p>
+          <button id="import-side">
+            Open another capture<svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 18V6M6 12l6-6 6 6" />
+            </svg>
+          </button>
         </div>
-        <p class="nav-label second-label">A GOOD PLACE TO START</p>
-        <div class="guide-card">
-          <span class="guide-number">01</span>
-          <h3>Follow the errors.</h3>
+        <div class="side-note">
+          <span class="bracket">[ i ]</span>
+          <h3>The ID is the thread.</h3>
           <p>
-            Filter a service. Find a failed request. Open the event to see the
-            whole story.
+            Start with a recurring failure. Follow its request ID. Read the
+            events in order.
           </p>
-          <button id="try-errors">Show error events <span>→</span></button>
+          <button id="paste-open">
+            Paste a capture<svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
         </div>
-        <div class="privacy">
-          <span>◈</span>
-          <div>
-            <strong>Your logs stay yours.</strong>
-            <p>
-              Imported data is processed on this device. Nothing is uploaded.
-            </p>
-          </div>
-        </div>
-        <div class="sidebar-footer">
-          <span>EB</span>
-          <div>Edmond Bassey<small>Developer portfolio project</small></div>
+        <div class="side-footer">
+          <span class="privacy-dot"></span>
+          <p>
+            Imported logs stay on this device.<br /><strong
+              >No upload. No account in the app.</strong
+            >
+          </p>
         </div>
       </aside>
-      <main id="main">
-        <div class="breadcrumb">Workspace <span>/</span> Log explorer</div>
-        <div class="page-heading">
+      <main id="workbench">
+        <div class="page-top">
           <div>
-            <p class="eyebrow">LESS GUESSWORK. MORE CONTEXT.</p>
-            <h1>Find the signal<span>.</span></h1>
-            <p>Explore your logs. Understand what happened.</p>
+            <p class="eyebrow">FROM REPEATED FAILURE TO USEFUL CONTEXT</p>
+            <h1>Follow the <em>signal.</em></h1>
+            <p class="intro">
+              Group what repeats. Follow what connects. Find what broke.
+            </p>
           </div>
-          <div class="page-actions">
-            <button class="secondary" id="export">↓ Export view</button
-            ><button class="primary" id="import-main">↑ Import logs</button>
+          <div class="top-actions">
+            <button class="secondary" id="export-report">
+              Export investigation<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v12M7 11l5 5 5-5M5 19v2h14v-2" />
+              </svg></button
+            ><button class="primary" id="import-main">
+              Open capture<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 18V6M6 12l6-6 6 6" />
+              </svg>
+            </button>
           </div>
         </div>
         <input
           type="file"
           id="file-input"
-          accept=".jsonl,.ndjson,.json,.log,.txt"
+          accept=".jsonl,.ndjson,.log,.txt,.json"
           hidden
         />
-        <div id="notice" class="notice" role="status" hidden></div>
         <div id="error" class="error" role="alert" hidden></div>
-        <section class="metrics" aria-label="Log summary">
-          <div class="metric">
-            <span>Total events <i>▤</i></span
+        <div id="notice" class="notice" role="status" hidden></div>
+        <section class="stats" aria-label="Capture summary">
+          <div>
+            <span class="stat-label">EVENTS IN VIEW</span
             ><strong id="metric-events">—</strong
-            ><small id="metric-events-note">In this view</small>
+            ><small id="metric-events-note">All readable records</small>
           </div>
-          <div class="metric">
-            <span>Error events <i>↗</i></span
-            ><strong id="metric-errors" class="orange">—</strong
+          <div>
+            <span class="stat-label">ERROR EVENTS</span
+            ><strong class="amber" id="metric-errors">—</strong
             ><small id="metric-error-rate">—</small>
           </div>
-          <div class="metric">
-            <span>P95 latency <i>◴</i></span
-            ><strong id="metric-p95">—</strong
-            ><small id="metric-duration-count">From measured events</small>
+          <div>
+            <span class="stat-label">ERROR GROUPS</span
+            ><strong id="metric-groups">—</strong
+            ><small>Distinct patterns in this view</small>
           </div>
-          <div class="metric">
-            <span>Services <i>◇</i></span
-            ><strong id="metric-services">—</strong
-            ><small>Represented in this view</small>
+          <div>
+            <span class="stat-label">P95 LATENCY</span
+            ><strong id="metric-p95">—</strong
+            ><small id="metric-duration-count">Measured events only</small>
           </div>
         </section>
-        <div class="charts">
-          <section class="timeline-panel">
-            <div class="panel-heading">
-              <h2>Event volume</h2>
-              <div class="legend">
-                <span><i></i>All events</span
-                ><span><i class="orange-dot"></i>Errors</span>
-              </div>
-            </div>
-            <div
-              id="timeline"
-              class="timeline"
-              role="img"
-              aria-label="Event volume over time"
-            ></div>
-            <div class="timeline-axis">
-              <span id="timeline-start"></span><span id="timeline-end"></span>
-            </div>
-          </section>
-          <section class="endpoint-panel">
-            <div class="panel-heading">
-              <h2>Endpoints to watch</h2>
-              <span class="panel-kicker">BY ERRORS</span>
-            </div>
-            <div id="endpoints"></div>
-          </section>
+        <section class="signal-map">
+          <div class="map-title">
+            <h2>CAPTURE DENSITY</h2>
+            <span>OBSERVED EVENT TIME</span>
+          </div>
+          <div
+            class="map-chart"
+            id="timeline"
+            role="img"
+            aria-label="Events over time"
+          ></div>
+          <div class="map-footer">
+            <span id="timeline-start">—</span>
+            <div><i></i>Events<i class="amber-dot"></i>Errors</div>
+            <span id="timeline-end">—</span>
+          </div>
+        </section>
+        <div class="investigation-toolbar">
+          <label class="search"
+            ><svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10" cy="10" r="6" />
+              <path d="M15 15l5 5" /></svg
+            ><input
+              id="search"
+              type="search"
+              aria-label="Search capture"
+              placeholder="Request ID, endpoint, service or message…"
+            /><kbd>/</kbd></label
+          ><label
+            ><span class="sr-only">Filter by service</span
+            ><select id="service">
+              <option value="all">All services</option>
+            </select></label
+          ><label
+            ><span class="sr-only">Filter by severity</span
+            ><select id="level">
+              <option value="all">All severities</option>
+              <option value="error">Error</option>
+              <option value="fatal">Fatal</option>
+              <option value="warn">Warn</option>
+              <option value="info">Info</option>
+              <option value="debug">Debug</option>
+              <option value="trace">Trace</option>
+              <option value="unknown">Unknown</option>
+            </select></label
+          ><button
+            id="reset"
+            class="reset"
+            title="Clear filters"
+            aria-label="Clear filters"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 7v5h-5M20 12a8 8 0 10-2 6" />
+            </svg>
+          </button>
         </div>
-        <section class="events-panel" aria-label="Log events">
-          <div class="event-heading">
-            <h2>Events <span id="view-count"></span></h2>
-            <button id="reset-filters" class="text-button">
-              Reset filters ↺
+        <section class="results">
+          <header class="results-heading">
+            <div>
+              <span class="section-index" id="view-index">01</span>
+              <h2 id="view-title">Recurring error groups</h2>
+              <span id="view-count" class="result-count">—</span>
+            </div>
+            <span id="view-description"
+              >SERVICE + STATUS + PATH + MESSAGE PATTERN</span
+            >
+          </header>
+          <div id="results"></div>
+          <div class="result-footer">
+            <span id="page-info">—</span>
+            <div class="pagination" id="pagination">
+              <button id="prev" aria-label="Previous page">Previous</button
+              ><span id="page-number"></span
+              ><button id="next" aria-label="Next page">Next</button>
+            </div>
+            <button id="export-csv">
+              Export event CSV<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 18L18 6M6 6h12v12" />
+              </svg>
             </button>
           </div>
-          <div class="filter-row">
-            <label class="search"
-              ><span>⌕</span
-              ><input
-                type="search"
-                id="search"
-                placeholder="Search messages, endpoints or request IDs…"
-                aria-label="Search events"
-              /><kbd>/</kbd></label
-            ><label
-              ><span class="sr-only">Service</span
-              ><select id="service">
-                <option value="all">All services</option>
-              </select></label
-            ><button id="paste-open" class="secondary">Paste logs</button>
-          </div>
-          <div class="level-filters" role="group" aria-label="Severity filter">
-            <button data-level="all" class="selected" aria-pressed="true">
-              All levels <span id="count-all"></span></button
-            ><button data-level="info" aria-pressed="false">
-              <i class="info-dot"></i>Info <span id="count-info"></span></button
-            ><button data-level="warn" aria-pressed="false">
-              <i class="warn-dot"></i>Warn <span id="count-warn"></span></button
-            ><button data-level="error" aria-pressed="false">
-              <i class="error-dot"></i>Error
-              <span id="count-error"></span></button
-            ><button data-level="fatal" aria-pressed="false">
-              <i class="fatal-dot"></i>Fatal
-              <span id="count-fatal"></span></button
-            ><label class="other-levels"
-              ><span class="sr-only">Other severity levels</span
-              ><select id="other-level">
-                <option value="all">Other levels</option>
-                <option value="trace">Trace</option>
-                <option value="debug">Debug</option>
-                <option value="unknown">Unknown</option>
-              </select></label
-            >
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>TIME</th>
-                  <th>LEVEL</th>
-                  <th>SERVICE</th>
-                  <th>MESSAGE</th>
-                  <th>LATENCY</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="event-rows"></tbody>
-            </table>
-          </div>
-          <div class="empty" id="empty" hidden>
-            <span>⌕</span>
-            <h3>No events match this view</h3>
-            <p>Try a different service, severity or search term.</p>
-            <button id="empty-reset" class="secondary">Clear filters</button>
-          </div>
-          <div class="table-footer">
-            <span id="page-info"></span>
-            <div>
-              <button id="prev" aria-label="Previous page">←</button
-              ><span id="page-number"></span
-              ><button id="next" aria-label="Next page">→</button>
-            </div>
-          </div>
         </section>
-        <footer class="main-footer">
-          <span>JSONL, one event at a time.</span
-          ><span>Drop a file anywhere to start · 2 MB limit</span>
+        <footer class="bottom-line">
+          <span>LOGBOOK / INVESTIGATION WORKBENCH</span
+          ><span
+            >Fictional sample capture. Bring your own when you’re ready.</span
+          >
         </footer>
       </main>
     </div>
-    <dialog id="event-dialog" class="drawer" aria-labelledby="event-title">
-      <div class="drawer-header">
-        <span>EVENT DETAILS</span
-        ><button data-close="event-dialog" aria-label="Close event details">
-          ×
+    <dialog
+      id="detail-dialog"
+      class="detail-dialog"
+      aria-labelledby="detail-title"
+    >
+      <div class="detail-header">
+        <span id="detail-label">INSPECT</span
+        ><button data-close="detail-dialog" aria-label="Close inspector">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
         </button>
       </div>
-      <div class="drawer-content">
-        <div id="event-meta"></div>
-        <h2 id="event-title"></h2>
-        <dl id="event-properties"></dl>
-        <div class="raw-heading">
-          <h3>Raw event</h3>
-          <button id="copy-json" class="secondary">Copy JSON</button>
-        </div>
-        <pre id="raw-json"></pre>
-        <p id="copy-status" role="status"></p>
+      <div class="detail-content">
+        <div id="detail-meta"></div>
+        <h2 id="detail-title"></h2>
+        <div id="detail-body"></div>
       </div>
     </dialog>
-    <dialog id="paste-dialog" class="modal" aria-labelledby="paste-title">
-      <div class="modal-heading">
-        <div>
-          <p class="eyebrow">BRING YOUR OWN CONTEXT</p>
-          <h2 id="paste-title">Paste your logs</h2>
-        </div>
-        <button data-close="paste-dialog" aria-label="Close paste logs">
-          ×
+    <dialog
+      id="paste-dialog"
+      class="paste-dialog"
+      aria-labelledby="paste-title"
+    >
+      <div class="detail-header">
+        <span>OPEN A TEXT CAPTURE</span
+        ><button data-close="paste-dialog" aria-label="Close paste capture">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
         </button>
       </div>
       <form id="paste-form">
+        <h2 id="paste-title">Bring the evidence.</h2>
         <label for="paste-text"
-          >One JSON object per line. Include a message or msg field.</label
+          >One JSON object per line, with a message or msg field.</label
         ><textarea
           id="paste-text"
-          placeholder='{"timestamp":"2026-11-13T13:00:00Z","level":"error","service":"api","message":"Request failed","status":500,"duration_ms":780}'
           required
           spellcheck="false"
+          placeholder='{"timestamp":"2026-11-13T11:42:17Z","level":"error","service":"delivery-gateway","message":"Delivery failed","request_id":"req_6a41","status":502}'
         ></textarea>
-        <div class="paste-footer">
-          <span>Processed only in this browser.</span
-          ><button class="primary">Explore logs →</button>
+        <div>
+          <span>2 MB / 20,000 lines. Processed on this device.</span
+          ><button class="primary">Open capture</button>
         </div>
       </form>
     </dialog>
-    <dialog id="issues-dialog" class="modal" aria-labelledby="issues-title">
-      <div class="modal-heading">
-        <h2 id="issues-title">Lines we couldn't read</h2>
-        <button data-close="issues-dialog" aria-label="Close import issues">
-          ×
+    <dialog
+      id="issues-dialog"
+      class="issues-dialog"
+      aria-labelledby="issues-title"
+    >
+      <div class="detail-header">
+        <span>IMPORT NOTES</span
+        ><button data-close="issues-dialog" aria-label="Close import notes">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
         </button>
       </div>
-      <div class="issues-body">
-        <p>
-          These lines were skipped. Valid events are still available in the
-          explorer.
-        </p>
+      <div class="issues-content">
+        <h2 id="issues-title">Lines we couldn’t read.</h2>
+        <p>Valid events remain available. These source lines were skipped.</p>
         <ol id="issues-list"></ol>
       </div>
     </dialog>
     <div id="drop-overlay" class="drop-overlay" hidden>
       <div>
-        ↓
-        <h2>Drop your logs here</h2>
-        <p>JSONL or NDJSON · up to 2 MB</p>
+        OPEN CAPTURE
+        <h2>Drop the evidence.</h2>
+        <p>JSONL / NDJSON · up to 2 MB</p>
       </div>
     </div>
   </body>

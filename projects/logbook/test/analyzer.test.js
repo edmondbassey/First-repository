@@ -159,3 +159,15 @@ test("large files and excessive line counts are rejected", () => {
     RangeError,
   );
 });
+
+test("prototype property names remain unknown severity values", () => {
+  const data = parseLogs(
+    raw([
+      { message: "a", level: "constructor" },
+      { message: "b", level: "__proto__" },
+      { message: "c", level: "toString" },
+    ]),
+  ).records;
+  assert.ok(data.every((r) => r.level === "unknown"));
+  assert.equal(summarize(data).counts.unknown, 3);
+});

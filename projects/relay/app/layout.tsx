@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Relay — Support desk",
-  description: "A calmer place to keep customer support moving.",
+  title: "Relay — Integration incident desk",
+  description:
+    "Investigate failed deliveries and broken imports. Preserve the evidence and leave a clear handoff.",
   icons: { icon: "/favicon.svg" },
 };
 export default function RootLayout({

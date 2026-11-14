@@ -1,25 +1,29 @@
 # Logbook: engineering notes
 
-The parser and calculations live in src/analyzer.js. They do not depend on the DOM. public/app.js handles file selection, filters, pagination and rendering. scripts/build.mjs creates the static distribution.
+`src/analyzer.js` handles bounded parsing, normalization, filtering and measurements. `src/forensics.js` groups errors, orders requests and writes the investigation report. Neither module depends on the DOM. `public/app.js` handles file input, navigation, dialogs, pagination and text rendering. The build copies those ES modules into a static distribution.
 
-## Data flow
+## From capture to investigation
 
-Text input → bounded JSONL parsing → normalized events → combined filters → metrics, table and endpoint summaries.
+A capture is parsed once. Its readable records and source-line issues remain separate. Search, service and severity filters produce the current dataset. All three views and the exported investigation use that same filtered dataset.
 
-The raw object remains attached to each normalized event so the inspector can show fields the parser does not recognize.
+The sample connects to Relay's fictional duplicate-order case: request `req_6a41` passes through the API gateway, delivery gateway, partner adapter and delivery worker. There is no live integration between the two apps.
 
-## Useful decisions to discuss
+## Grouping without pretending to know the cause
 
-- Why preserve unknown severity rather than call it info? Reclassifying it would make the data look more certain than it is.
-- Why exclude invalid durations? Treating a missing measurement as zero would bias the latency percentiles.
-- Why keep parsing errors separate? One malformed event should not prevent inspection of the valid records.
-- Why local processing? Troubleshooting logs may contain private information, and this tool needs no server-side storage.
-- Why a bound on imports? Parsing and rendering happen on the main thread. Large-file support would need streaming and a worker.
-- Why nearest-rank percentiles? The method is simple, deterministic and documented; another estimator can produce different values on small datasets.
-- Why no innerHTML for events? A log message can contain markup and must remain text.
+A group key includes service, severity, HTTP status, normalized path and message pattern. Keeping HTTP status in the key prevents a 409 conflict from being merged with a 502 timeout just because message normalization removes their digits. All original member events remain inspectable.
 
-## Extend it
+Path normalization removes query strings and replaces numeric or UUID segments. Message normalization replaces UUIDs, req_/evt_/job_/usr_ identifiers and standalone numbers of at least three digits. These rules can over-group unrelated messages or miss equivalent ones; they offer an investigation starting point rather than root-cause detection.
 
-Add a parser for another documented log format. Give it fixtures that include valid records, invalid timestamps and partially missing fields. Keep the normalized event shape stable so filters and summaries continue to work.
+## Request chronology and timing
 
-A next step for large datasets would be a streaming parser in a Web Worker and a virtualized table. Those are future changes, not current features.
+Request trails require an explicit ID. Matching events are sorted by readable timestamp, then source line; untimed events appear last. The inspector shows offsets from the first timed event. The observed span is the difference between the first and last timestamps.
+
+This is a chronology of recorded events. It does not infer parent/child spans, prove causality, correct clock skew, or measure network latency from event gaps. A missing duration is never converted to zero. P95 uses nearest rank on available nonnegative numeric durations.
+
+## Input handling
+
+One malformed line does not prevent inspection of valid records. Unknown severity is kept as unknown; aliases use own-property checks so names such as constructor cannot resolve through the object prototype. Raw fields remain attached to each normalized event.
+
+Imports stop above 2 MB or 20,000 lines. Rendering uses textContent for imported values, and CSV output protects against leading spreadsheet formulas. All imported contents stay in browser memory; exports are local downloads.
+
+Parsing still runs on the main thread. Large-capture support would need a streaming parser, a Web Worker and virtualized rendering. Authentication and persistent storage are unnecessary for the present local workflow.

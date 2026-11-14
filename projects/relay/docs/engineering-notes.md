@@ -1,52 +1,37 @@
-# Relay: architecture and walkthrough
+# Relay: engineering notes
 
-```mermaid
-flowchart TD
-  UI["React inbox"] --> Routes["REST routes"]
-  Routes --> Service["Ticket service and validation"]
-  Service --> DB["SQLite / D1"]
-  DB --> Audit["Ticket history"]
-```
+## One investigation, two kinds of state
 
-## Follow one request
+The queue describes the incident: service, environment, impact, owner, priority and workflow status. The case file describes the investigation: observed evidence, request ID, a runbook, notes and a downloadable handoff.
 
-1. `app/page.tsx` sends a JSON request to the ticket route.
-2. `lib/http.ts` resolves the session and workspace. `lib/request.ts` rejects cross-origin browser writes, wrong media types and oversized bodies.
-3. `lib/domain.ts` validates input and status transitions.
-4. `lib/service.ts` executes parameterized SQL against the workspace.
-5. The route returns JSON. The interface refreshes the inbox and displays the saved record.
+`components/desk/IncidentDesk.tsx` owns the interface. `lib/domain.ts` and `lib/incidents.ts` validate inputs, `lib/service.ts` stores cases and history, and `lib/checks.ts` stores runbook progress. REST handlers resolve the workspace, validate the request boundary and call those services.
 
 ## Why transactions and versions both matter
 
-A transaction keeps the ticket update and audit event together. It does not, by itself, stop an older browser tab from overwriting a newer value.
+A transaction keeps a case update and its audit event together. It does not stop an older browser tab from overwriting a newer value.
 
-Each ticket has a version. Updates include the version they read; the SQL update only succeeds if that version still matches. A unique operation ID is written with the update. The audit insert checks that operation ID in the same transaction. A failed conditional update therefore cannot add a misleading event.
+Property updates carry the version they read. SQL only updates a matching version. A unique operation ID is written with the change, and the audit insert checks that ID in the same transaction. A failed conditional update therefore cannot add a misleading event. The UI refreshes after HTTP 409.
 
-The integration test simulates a second write after the service reads the ticket and before its update executes. The original update returns 409, the new state remains intact and no extra event appears.
+A regression test interleaves a second write after the service reads the case and before its update executes. The older write receives 409, the newer state survives and no extra event appears.
 
-## Where isolation comes from
+## Checklist semantics
 
-The browser receives an opaque UUID in an HttpOnly, SameSite cookie. Tickets and events belong to that workspace, and each query scopes its lookup by workspace ID. The test suite tries another workspace's ticket ID for reads, edits and notes.
+Each incident kind owns a fixed runbook. A check key from another runbook is rejected. Checks accept strict booleans and use a unique `(ticket_id, check_key)` constraint. An upsert changes only a different checked value, and a nonce guards its history insertion in the same transaction. Repeating the current value creates no audit noise.
 
-This provides separation for a demo, not a substitute for account authentication or authorization in a production help desk.
+Checklist booleans use last-write-wins rather than the case's property version. They track the recorded investigation, not external actions: checking a step never sends a delivery or touches a partner system.
 
-## Data model
+## Isolation and migrations
 
-- Workspaces identify isolated demo sessions.
-- Tickets hold the customer issue, assignee, status, target time and version.
-- Ticket events record creation, property updates and internal notes.
+The browser receives an opaque workspace UUID in an HttpOnly, SameSite cookie. Queries scope cases, events and checks by workspace. Tests try another workspace's case ID for reads, property edits, notes and checks.
 
-The Drizzle schema generates the checked-in SQL migration. Request handlers never create or alter tables. Sample data is inserted when a new workspace starts.
+Migration 0000 remains intact. Migration 0001 adds defaulted incident fields and the `incident_checks` table. Existing cases remain available; the new ten-case fixture is inserted only when a new workspace is created. Both migrations run against real SQLite in the tests.
 
-## Walkthrough exercises
+This session mechanism is suitable for separate demo workspaces. Production accounts would need authentication, membership roles, rate limiting and a retention policy.
 
-- Trace a new ticket from the form to the SQL insert and its returned JSON.
-- Open the same ticket in two tabs, save one change, then attempt a different change in the older tab.
-- Find the SQL condition that makes a ticket from another workspace inaccessible.
-- Change a status-transition rule and update the corresponding test.
-- Explain the difference between an internal note and an outbound customer reply.
-- Compare the local SQLite test adapter with the hosted D1 binding.
+## Handoff and sample walkthrough
 
-## Next development work
+Open RLY-1041, record its failed response, add an internal field note, and download the handoff. The Markdown includes case metadata, quoted evidence, checklist progress and history. It excludes the workspace session ID.
 
-Add account membership and roles before supporting real customer data. Move search and pagination to the API if workspaces grow beyond the demo limit. Add browser regression tests to cover the interface alongside the existing service and request tests.
+The fictional request `req_6a41` also appears in Logbook's bundled capture. The apps share a scenario, not a live backend connection. Logbook can show that request's recorded service events; Relay holds the investigator's interpretation and handoff.
+
+Useful code-review exercises: explain the operation-ID guard, reproduce a stale update in two tabs, trace a checklist toggle into SQL, and distinguish an internal field note from an outbound response.

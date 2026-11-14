@@ -21,19 +21,10 @@ export interface Database {
 }
 const at = (now: number, hours: number) =>
   new Date(now - hours * 3600000).toISOString();
-const fixtures: [
-  string,
-  string,
-  string,
-  string,
-  Status,
-  Priority,
-  string,
-  number,
-][] = [
+const fixtures = [
   [
-    "Export gets stuck at 80%",
-    "The monthly report export stops at 80% and never finishes. I have tried two browsers. Could you help me get this report?",
+    "Webhook retries create duplicate orders",
+    "Delivery evt_8f32 returned HTTP 502 after 1,200 ms. A retry used the same event ID, but the receiver created a second order. Preserve the response and verify idempotency before a staging replay.",
     "Nora Williams",
     "Bug report",
     "open",
@@ -42,38 +33,38 @@ const fixtures: [
     3,
   ],
   [
-    "Unable to invite a teammate",
-    "The invitation link shows an expired message immediately after I send it. We need to add a colleague to the workspace.",
+    "Partner import rejects ISO dates",
+    "Row 214 fails validation on a timezone suffix in completed_at. Earlier rows have already committed. Preserve a failing row and establish whether the import can be resumed safely.",
     "Alex Morgan",
-    "Account access",
+    "Bug report",
     "in_progress",
     "high",
     "Maya Chen",
     7,
   ],
   [
-    "A second charge on my invoice",
-    "My latest invoice includes the same workspace twice. Could you check the two line items before the next payment?",
+    "Service token rejected after rotation",
+    "The reporting integration now returns 403 after a token rotation. Compare expected audience and scopes without copying the credential into this case.",
     "Jamie Brooks",
-    "Billing",
+    "Account access",
     "open",
     "high",
     "Unassigned",
     12,
   ],
   [
-    "Where can I find last month's report?",
-    "I can see the current report but cannot find last month's report in the dashboard. Am I missing a filter?",
+    "Nightly report exceeds gateway timeout",
+    "The reporting endpoint spends 28 seconds on aggregation, but the caller times out at 25 seconds. Follow the gateway and report worker events to compare their budgets.",
     "Riley Patel",
-    "Feature request",
+    "Bug report",
     "pending",
     "normal",
     "Ellis Park",
     20,
   ],
   [
-    "Webhook events arrive out of order",
-    "Our integration received an updated event before the created event. Could you confirm whether ordering is guaranteed?",
+    "Delivery signatures fail on retried events",
+    "First deliveries pass signature validation, but retries are rejected as expired. Check whether the retry reuses the original signing timestamp and confirm with a staging delivery.",
     "Taylor Adams",
     "Bug report",
     "in_progress",
@@ -82,28 +73,28 @@ const fixtures: [
     26,
   ],
   [
-    "Update the billing contact",
-    "We have a new accounts team. Please let me know how to change the email address used for invoice notifications.",
+    "CSV import recovers from a blank amount",
+    "The parser now identifies the row and column for a blank amount. A corrected five-row staging sample passed, and the failed batch created no partial records.",
     "Robin Lee",
-    "Billing",
+    "Bug report",
     "resolved",
     "low",
     "Maya Chen",
     30,
   ],
   [
-    "Add a dark appearance option",
-    "Our team uses the dashboard late at night. A dark appearance option would make reviewing tickets more comfortable.",
+    "Out-of-order events overwrite a newer state",
+    "An older status was applied after a later update had arrived. Preserve both event timestamps and check whether the receiver uses an event version.",
     "Casey Walker",
-    "Feature request",
+    "Bug report",
     "open",
     "low",
     "Unassigned",
     48,
   ],
   [
-    "Password reset link is not arriving",
-    "I requested a password reset twice this morning and checked the spam folder, but no email has arrived yet.",
+    "Workspace role cannot create API keys",
+    "An integration administrator receives 403 when creating a staging API key. Compare the workspace role's intended permissions with the policy evaluation response.",
     "Drew Miller",
     "Account access",
     "pending",
@@ -112,8 +103,8 @@ const fixtures: [
     54,
   ],
   [
-    "Search misses archived records",
-    "Searching by the reference number does not find archived records. I can still open them using an old bookmarked link.",
+    "Import progress stalls after row 500",
+    "The worker retries validation while progress remains at the same offset. Check the resume cursor and identify committed rows before restarting.",
     "Quinn Davis",
     "Bug report",
     "in_progress",
@@ -122,16 +113,40 @@ const fixtures: [
     72,
   ],
   [
-    "Help connecting our workspace",
-    "We followed the integration guide and connected our test workspace. Everything is now working. Thanks for the clear instructions.",
+    "Gateway timeout aligned with worker budget",
+    "The worker now returns a bounded failure before the gateway times out. A staging check returned the request ID and preserved the idempotency key on retry.",
     "Avery Scott",
-    "Account access",
+    "Bug report",
     "resolved",
     "normal",
     "Maya Chen",
     96,
   ],
-];
+] as const;
+const seedMetadata = [
+  [
+    "webhook",
+    "Delivery gateway",
+    "production",
+    "partial degradation",
+    "req_6a41",
+  ],
+  ["import", "Import pipeline", "production", "single account", "req_6a42"],
+  ["identity", "Identity API", "production", "single account", "req_6a43"],
+  ["latency", "Reporting API", "production", "partial degradation", "req_6a44"],
+  ["webhook", "Delivery gateway", "staging", "partial degradation", "req_6a45"],
+  ["import", "Import pipeline", "staging", "single account", "req_6a46"],
+  [
+    "webhook",
+    "Delivery gateway",
+    "production",
+    "partial degradation",
+    "req_6a47",
+  ],
+  ["identity", "Identity API", "staging", "single account", "req_6a48"],
+  ["import", "Import pipeline", "production", "single account", "req_6a49"],
+  ["latency", "Reporting API", "staging", "single account", "req_6a4a"],
+] as const;
 export async function createWorkspace(db: Database, now = Date.now()) {
   const id = crypto.randomUUID(),
     statements = [
@@ -201,6 +216,14 @@ export async function createWorkspace(db: Database, now = Date.now()) {
             updated,
           ),
       );
+    const [kind, service, environment, impact, requestId] = seedMetadata[index];
+    statements.push(
+      db
+        .prepare(
+          "UPDATE tickets SET incident_kind=?,service=?,environment=?,impact=?,request_id=? WHERE id=? AND workspace_id=?",
+        )
+        .bind(kind, service, environment, impact, requestId, tid, id),
+    );
   });
   await db.batch(statements);
   return id;
@@ -257,7 +280,7 @@ export async function addTicket(
   const results = await db.batch([
     db
       .prepare(
-        "INSERT INTO tickets (id,workspace_id,number,subject,body,requester_name,requester_email,category,status,priority,owner,created_at,updated_at,due_at,resolved_at,version,last_operation) SELECT ?,?,COALESCE(MAX(number),1040)+1,?,?,?,?,?,'open',?,'Unassigned',?,?,?,NULL,1,? FROM tickets WHERE workspace_id=? HAVING COUNT(*) < 100",
+        "INSERT INTO tickets (id,workspace_id,number,subject,body,requester_name,requester_email,category,status,priority,owner,created_at,updated_at,due_at,resolved_at,version,last_operation,incident_kind,service,environment,impact,request_id) SELECT ?,?,COALESCE(MAX(number),1040)+1,?,?,?,?,?,'open',?,'Unassigned',?,?,?,NULL,1,?,?,?,?,?,? FROM tickets WHERE workspace_id=? HAVING COUNT(*) < 100",
       )
       .bind(
         id,
@@ -279,6 +302,11 @@ export async function addTicket(
               : 72),
         ),
         id,
+        input.incident_kind,
+        input.service,
+        input.environment,
+        input.impact,
+        input.request_id,
         workspace,
       ),
     db

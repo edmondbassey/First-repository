@@ -31,6 +31,11 @@ export const tickets = sqliteTable(
     resolvedAt: text("resolved_at"),
     version: integer("version").notNull().default(1),
     lastOperation: text("last_operation").notNull(),
+    incidentKind: text("incident_kind").notNull().default("webhook"),
+    service: text("service").notNull().default("Delivery gateway"),
+    environment: text("environment").notNull().default("production"),
+    impact: text("impact").notNull().default("single account"),
+    requestId: text("request_id").notNull().default(""),
   },
   (t) => [
     uniqueIndex("tickets_workspace_number").on(t.workspaceId, t.number),
@@ -53,5 +58,26 @@ export const events = sqliteTable(
   },
   (t) => [
     index("events_workspace_ticket").on(t.workspaceId, t.ticketId, t.createdAt),
+  ],
+);
+
+export const incidentChecks = sqliteTable(
+  "incident_checks",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    ticketId: text("ticket_id")
+      .notNull()
+      .references(() => tickets.id),
+    checkKey: text("check_key").notNull(),
+    checked: integer("checked").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+    lastOperation: text("last_operation").notNull(),
+  },
+  (t) => [
+    uniqueIndex("incident_check_ticket_key").on(t.ticketId, t.checkKey),
+    index("incident_checks_workspace").on(t.workspaceId, t.ticketId),
   ],
 );

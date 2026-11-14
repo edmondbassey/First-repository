@@ -6,3 +6,5 @@ for (const name of await readdir("public"))
 await copyFile("src/analyzer.js", "dist/analyzer.js");
 await copyFile("samples/demo.jsonl", "dist/demo.jsonl");
 console.log("Logbook built into dist/");
+
+await copyFile("src/forensics.js", "dist/forensics.js");

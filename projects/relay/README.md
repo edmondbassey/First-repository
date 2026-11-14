@@ -1,29 +1,30 @@
 # Relay
 
-A support desk for triaging customer issues, assigning work and keeping a clear history of what changed.
+An integration incident desk for failed webhook deliveries, rejected imports, access failures and slow API requests.
 
 **TypeScript · React · REST API · SQLite / Cloudflare D1**
 
-## Try it
+## Try an investigation
 
-Create a ticket with fictional customer details, assign it, move it through the workflow and add an internal note. Search the inbox by customer, subject or reference, then export the filtered records as CSV.
+Open the duplicate-order case. Read the failed response and request ID, complete a runbook step, add a field note, and export the investigation handoff. Create a case to try another incident type; each type has its own four-step runbook.
 
-Each browser gets a separate demo workspace with ten fictional tickets. Records are stored on the server and survive a page reload. The interface does not send email.
+Each browser gets a separate demo workspace with ten fictional incidents. Case changes, checklists and history are stored on the server and survive a reload. Notes remain internal; the app sends no email. The matching `req_6a41` fixture in [Logbook](../logbook) provides a related service-event investigation.
 
 ## Run locally
 
-Use Node.js 24 and npm.
+Use Node.js 24 and npm. For a fresh local database:
 
 ```sh
 npm ci
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_faulty_shadow_king.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_slimy_meggan.sql
 npm run dev
 ```
 
-Open the development URL printed by the server. Apply the migration once for each new local database. Local records are kept under the ignored `.wrangler/` directory.
+Open the development URL printed by the server. Apply each migration once, in order. For an existing database already using migration 0000, apply only 0001. Local records live in the ignored `.wrangler/` directory. Migration 0001 adds incident fields and checklists without replacing existing tickets.
 
-The development and build scripts use Vinext and Cloudflare Workers. The hosting integration and its vendor license remain in `scripts/vite/`.
+Build and development use Vinext and Cloudflare Workers. The hosting integration and vendor license remain in `scripts/vite/`.
 
 ## Checks
 
@@ -33,24 +34,24 @@ npm run typecheck
 npm run build
 ```
 
-The 18 tests run real SQL against an in-memory SQLite database using the same migration and service queries as the application. They check workspace isolation, validation, transitions, rollback, stale writes, a write racing after the initial read, the record limit, request handling and CSV formula protection.
+The 26 tests run service queries against an in-memory SQLite database using both application migrations. They cover workspace isolation, validation, transitions, atomic audit writes, stale updates, a write racing after the initial read, request boundaries, CSV formula protection, incident metadata, runbook membership, checklist persistence, repeat toggles and handoff content.
 
 ## Engineering choices
 
-- All ticket and event queries include the workspace ID.
-- Ticket changes use a version check. A stale update receives HTTP 409.
-- A ticket update and its audit event share a transaction. An operation ID prevents an unsuccessful update from creating a history entry.
-- A resolved ticket must be reopened before moving to another active state.
-- Request bodies, field lengths and workspace size are bounded. SQL values are parameterized.
-- Native dialogs handle modal focus and keyboard dismissal.
+- Ticket, history and checklist lookups include the workspace ID.
+- Property changes use a version check. Stale writes receive HTTP 409 and the interface loads the current state.
+- A property change and its history entry share a transaction. A per-operation ID prevents an unsuccessful write from creating a misleading event.
+- Checklist writes validate the incident's runbook and record an audit event only when the checked value changes.
+- A resolved case must be reopened before moving to another active state.
+- Incident fields are validated against known values; request IDs are bounded single-line text.
+- Handoffs contain evidence, completed checks and history, without the workspace session identifier.
+- Native dialogs provide modal focus and keyboard dismissal.
 
 [API reference](docs/api.md) · [Architecture and walkthrough](docs/engineering-notes.md)
 
 ## Project boundaries
 
-This is an interactive portfolio demo. The random, HttpOnly session cookie identifies a demo workspace; it is not a production account system. A production service would need account authentication, roles, rate limiting and a retention policy. The queue supports up to 100 tickets per workspace. The inbox searches those loaded records client-side.
-
-All sample names, messages and email addresses are fictional.
+This is a portfolio demo with fictional data. The random HttpOnly session cookie identifies a demo workspace, rather than a production user account. A production service would need account authentication, membership roles, rate limiting and a retention policy. The queue holds up to 100 cases per workspace and searches those loaded records in the browser. Runbooks guide investigation; they do not call external APIs or replay deliveries.
 
 ## Author
 

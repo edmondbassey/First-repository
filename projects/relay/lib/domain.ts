@@ -1,3 +1,5 @@
+import { AppError } from "./errors.ts";
+import { incidentFields } from "./incidents.ts";
 export const STATUSES = ["open", "in_progress", "pending", "resolved"] as const;
 export const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 export const CATEGORIES = [
@@ -17,7 +19,7 @@ export type Priority = (typeof PRIORITIES)[number];
 export const LABELS: Record<Status, string> = {
   open: "Open",
   in_progress: "In progress",
-  pending: "Waiting on customer",
+  pending: "Waiting on evidence",
   resolved: "Resolved",
 };
 export const TRANSITIONS: Record<Status, readonly Status[]> = {
@@ -26,13 +28,7 @@ export const TRANSITIONS: Record<Status, readonly Status[]> = {
   pending: ["open", "in_progress", "resolved"],
   resolved: ["open"],
 };
-export class AppError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+export { AppError } from "./errors.ts";
 export type Ticket = {
   id: string;
   workspace_id: string;
@@ -51,6 +47,11 @@ export type Ticket = {
   resolved_at: string | null;
   version: number;
   last_operation: string;
+  incident_kind: import("./incidents.ts").IncidentKind;
+  service: string;
+  environment: string;
+  impact: string;
+  request_id: string;
 };
 export type TicketEvent = {
   id: string;
@@ -93,6 +94,7 @@ export function validateTicket(value: unknown) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new AppError(400, "Enter a valid email address.");
   return {
+    ...incidentFields(d),
     subject: text(d.subject, "Subject", 3, 140),
     body: text(d.body, "Description", 10, 5000),
     requester_name: text(d.requester_name, "Customer name", 2, 80),

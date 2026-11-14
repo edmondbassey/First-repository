@@ -1,0 +1,10 @@
+{
+  "name": "edmond-bassey-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "author": "Edmond Bassey",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}

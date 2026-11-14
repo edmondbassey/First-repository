@@ -1,32 +1,48 @@
 # Edmond Bassey
 
-Freelance backend engineer based in Montreal. I build web applications and tools for debugging and support. I am open to backend development, software testing and technical support work.
+Freelance backend engineer based in Montréal. I build APIs and tools for tracking down failures. I am open to remote backend, QA and technical support work.
 
-## Selected projects
+## Selected work
 
-### [Relay — support desk](projects/relay)
+### [Relay — integration incident desk](projects/relay)
 
-A working support-ticket application with a React interface, a TypeScript REST API and persistent SQLite storage.
+A case file for failed webhook deliveries, rejected imports, access failures and slow API requests. Each incident type has its own runbook. Evidence, saved checks and field notes stay together in a downloadable investigation handoff.
 
-- Create and search tickets, assign work, update priorities and add internal notes.
-- Version checks prevent older browser tabs from overwriting newer changes.
-- Ticket updates and their history entries share a transaction.
-- Separate demo workspaces, parameterized SQL and bounded inputs.
-- 18 tests using real SQL, including workspace isolation and concurrent edits.
+- TypeScript, React, REST API and persistent SQLite / Cloudflare D1 storage.
+- Version checks prevent an older tab from overwriting a newer property change.
+- Transactional audit writes keep the case history consistent with saved changes.
+- Separate demo workspaces, validated runbook keys and bounded inputs.
+- 26 SQL and request tests, including cross-workspace access, stale writes and rollback.
 
-[Source and setup](projects/relay) · [Architecture](projects/relay/docs/engineering-notes.md) · [API reference](projects/relay/docs/api.md)
+![Relay integration incident desk](projects/portfolio/public/images/relay.jpg)
 
-### [Logbook — log explorer](projects/logbook)
+[Source and setup](projects/relay) · [Engineering notes](projects/relay/docs/engineering-notes.md) · [API reference](projects/relay/docs/api.md)
 
-A browser-based JSONL log inspector for finding failed requests and investigating latency.
+### [Logbook — event forensics](projects/logbook)
 
-- Import or paste events, combine filters, inspect raw JSON and export a filtered CSV.
-- Calculates error rates, nearest-rank percentiles and endpoint summaries from the loaded data.
-- Reports malformed source lines while keeping valid events available.
-- Imported logs stay on the device.
-- 13 tests covering parsing, calculations, filtering and export edge cases.
+A local debugging workbench that groups repeated errors, follows one request across services and keeps the original JSON available. Its fictional capture follows the same duplicate-order scenario as Relay, including request `req_6a41`.
+
+- Three views: Error groups, Request trails and Event stream.
+- Grouping keeps service, severity and HTTP status separate, with documented normalization rules.
+- Request timelines show recorded chronology and observed span, rather than inferred causal traces.
+- Local JSONL imports, partial-import notes, filters, raw event inspection and investigation exports.
+- 24 tests covering parsing, measurements, grouping boundaries, request ordering and exports.
+
+![Logbook event forensics workbench](projects/portfolio/public/images/logbook.jpg)
 
 [Source and setup](projects/logbook) · [Engineering notes](projects/logbook/docs/engineering-notes.md)
+
+### [Portfolio — selected work](projects/portfolio)
+
+A responsive site presenting the two tools through the problems they solve, with actual app screenshots, source links and notes on implementation decisions. Built with HTML and CSS, without runtime dependencies.
+
+[Portfolio preview](https://edmond-bassey-works.regal-pixie-9265.chatgpt.site) · [Relay preview](https://edmond-relay-support.regal-pixie-9265.chatgpt.site) · [Logbook preview](https://edmond-logbook.regal-pixie-9265.chatgpt.site)
+
+The hosted previews currently require owner access. Source code, screenshots and local setup instructions are public here. All application fixtures are fictional.
+
+## Validation
+
+[Portfolio checks](https://github.com/edmondbassey/First-repository/actions/workflows/portfolio.yml) runs Relay's type checks, SQL tests and build, Logbook's tests and build, and the portfolio build on project changes.
 
 ## Earlier coursework
 
@@ -34,12 +50,12 @@ A browser-based JSONL log inspector for finding failed requests and investigatin
 - [Movie review database](https://github.com/edmondbassey/qkfls-Movie-Reviews-Database) — Node.js/Express coursework with Cloudant and Watson Natural Language Understanding.
 - [Text and URL analysis](https://github.com/edmondbassey/cazgi-IBM-Watson-NLU-Project) — React/Express coursework using Watson.
 
-The coursework retains its original attribution. The READMEs describe the implemented and unfinished parts.
+Coursework retains its original attribution. Its READMEs describe the implemented and unfinished parts.
 
 ## Client work
 
-My freelance client projects remain private under client agreements.
+Freelance client projects remain private under client agreements.
 
 ## Repository history
 
-The original firstpython.py and testchild.py files are early Python and Git exercises. New applications are kept under projects/.
+The original `firstpython.py` and `testchild.py` files are early Python and Git exercises. New applications live under `projects/`.

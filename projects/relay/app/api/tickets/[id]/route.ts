@@ -1,3 +1,4 @@
+import { listChecks } from "@/lib/checks";
 import {
   database,
   requireWorkspace,
@@ -16,6 +17,7 @@ export async function GET(request: Request, context: Context) {
     return json({
       ticket: await getTicket(db, workspace, id),
       events: await listEvents(db, workspace, id),
+      checks: await listChecks(db, workspace, id),
     });
   } catch (error) {
     return errorResponse(error);
@@ -30,6 +32,7 @@ export async function PATCH(request: Request, context: Context) {
     return json({
       ticket: await updateTicket(db, workspace, id, body),
       events: await listEvents(db, workspace, id),
+      checks: await listChecks(db, workspace, id),
     });
   } catch (error) {
     return errorResponse(error);
